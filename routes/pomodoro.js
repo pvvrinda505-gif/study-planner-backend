@@ -3,8 +3,11 @@ const pool = require("../db");
 
 const router = express.Router();
 
-// POST /pomodoro-logs — called once per completed 25-minute round
-// (matches handleSessionComplete() in dashboard.js)
+// POST /pomodoro-logs — called once per completed 25-minute round.
+// Instead of creating a new row every round, this keeps ONE row per
+// session and increments minutes_completed on it each time — so 25, then
+// another 25, becomes a single row showing 50, not two rows of 25.
+// Requires a UNIQUE key on session_id (see migration in the schema notes).
 router.post("/pomodoro-logs", async (req, res) => {
   const { session_id, start_time, end_time, minutes_completed } = req.body;
 
@@ -17,11 +20,14 @@ router.post("/pomodoro-logs", async (req, res) => {
   try {
     const [result] = await pool.query(
       `INSERT INTO pomodoro_logs (session_id, start_time, end_time, minutes_completed)
-       VALUES (?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         end_time = VALUES(end_time),
+         minutes_completed = minutes_completed + VALUES(minutes_completed)`,
       [session_id, start_time, end_time, minutes_completed]
     );
 
-    res.status(201).json({ message: "Pomodoro round logged", log_id: result.insertId });
+    res.status(201).json({ message: "Pomodoro round logged" });
   } catch (err) {
     console.error("Log pomodoro error:", err);
     res.status(500).json({ error: "Server error logging Pomodoro round." });
