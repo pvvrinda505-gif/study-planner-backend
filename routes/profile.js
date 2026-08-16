@@ -12,7 +12,7 @@ router.get("/profile/:user_id", async (req, res) => {
 
   try {
     const [userRows] = await pool.query(
-      "SELECT user_id, name, email, created_at FROM users WHERE user_id = ?",
+      "SELECT user_id, name, email, created_at, avatar_url FROM users WHERE user_id = ?",
       [user_id]
     );
     if (userRows.length === 0) {
